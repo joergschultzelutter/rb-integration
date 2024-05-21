@@ -41,62 +41,6 @@ def get_local_and_utc_times(lat, lon, base_date):
 
 
 def find_best_matching_time(target_utc_time, weather_data):
-    min_diff = timedelta.max
-    best_entry = None
-
-    for entry in weather_data:
-        current_diff = entry['timestamp'] - target_utc_time
-        if current_diff.total_seconds() >= 0 and current_diff < min_diff:
-            min_diff = current_diff
-            best_entry = entry
-
-    return best_entry
-
-
-# Beispiel-Liste mit Zeitstempeln in UTC (Stunden- und 6-Stunden-Rhythmus)
-import pytz
-from datetime import datetime, timedelta
-from timezonefinder import TimezoneFinder
-
-
-def get_timezone(lat, lon):
-    tf = TimezoneFinder()
-    timezone_str = tf.timezone_at(lat=lat, lng=lon)
-
-    if timezone_str is None:
-        raise ValueError("Could not determine the timezone for the given coordinates.")
-
-    return pytz.timezone(timezone_str)
-
-
-def get_local_and_utc_times(lat, lon, base_date):
-    # Ermittlung der Zeitzone
-    timezone = get_timezone(lat, lon)
-
-    # Definition der lokalen Zeiten
-    local_times = {
-        "Nacht": datetime(base_date.year, base_date.month, base_date.day, 0, 0),
-        "Morgen": datetime(base_date.year, base_date.month, base_date.day, 6, 0),
-        "Mittag": datetime(base_date.year, base_date.month, base_date.day, 12, 0),
-        "Abend": datetime(base_date.year, base_date.month, base_date.day, 18, 0),
-    }
-
-    local_and_utc_times = {}
-    for key, local_time in local_times.items():
-        local_time = timezone.localize(local_time)  # Lokalisierung der lokalen Zeit
-        utc_time = local_time.astimezone(pytz.utc)  # Konvertierung in UTC
-        utc_offset = local_time.utcoffset()
-
-        local_and_utc_times[key] = {
-            'local_time': local_time.strftime('%Y-%m-%d %H:%M:%S %Z%z'),
-            'utc_time': utc_time,
-            'utc_offset': utc_offset
-        }
-
-    return local_and_utc_times
-
-
-def find_best_matching_time(target_utc_time, weather_data):
     half_max_gap = timedelta(hours=3)
     best_entry = None
     min_diff = timedelta.max
@@ -196,8 +140,8 @@ for time_of_day, info in times.items():
 """
 
 # Beispielnutzung
-latitude = 52.5200  # Beispiel: Berlin
-longitude = 13.4050
+latitude = 34.052222  # Beispiel: Berlin
+longitude = -118.243611
 base_date = datetime(2024, 5, 17)  # Datum, für das die Zeiten berechnet werden sollen
 
 times = get_local_and_utc_times(latitude, longitude, base_date)
