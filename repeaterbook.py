@@ -1,8 +1,22 @@
+# Parts of this code have been taken from CHIRP's
+# 'repeaterbook' code, see https://github.com/kk7ds/chirp
+# for details
+
 import requests
 import logging
 import os
 import datetime
 import json
+import random
+import time
+
+# Random min/max values for sleep times after a
+# file has been downloaded
+SLEEPTIME_MIN = 60
+SLEEPTIME_MAX = 90
+
+# maximum age of local files
+MAX_FILE_AGE = 30
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s %(module)s -%(levelname)s- %(message)s"
@@ -224,29 +238,25 @@ ROW_COUNTRIES = [
     "Venezuela",
 ]
 
-#COUNTRIES = list(sorted(NA_COUNTRIES + ROW_COUNTRIES))
+# COUNTRIES = list(sorted(NA_COUNTRIES + ROW_COUNTRIES))
 
 headers = {
     "User-Agent": f"multi-purpose-aprs-daemon/0.51 (+https://github.com/joergschultzelutter/mpad/)"
 }
 
 
-def get_data(country, state, service: str = ""):
+def get_data(country: str, state: str = "", service: str = ""):
     # Ideally we would be able to pull the whole database, but right
     # now this is limited to 3500 results, so we need to filter and
     # cache by state to stay under that limit.
-    fn = "rb%s-%s-%s.json" % (
-        service,
-        country.lower().replace(" ", "_"),
-        state.lower().replace(" ", "_"),
-    )
+    fn = f"rb{service}-{country.lower().replace(' ', '_')}-{state.lower().replace(' ', '_')}.json"
     db_dir = "repeaterbook"
     try:
         os.mkdir(db_dir)
     except FileExistsError:
         pass
     except Exception as e:
-        logger.exception("Failed to create %s: %s" % (db_dir, e))
+        logger.exception(f"Failed to create {db_dir}: {e}")
         return
     data_file = os.path.join(db_dir, fn)
     try:
@@ -254,7 +264,7 @@ def get_data(country, state, service: str = ""):
     except FileNotFoundError:
         modified = 0
     modified_dt = datetime.datetime.fromtimestamp(modified)
-    interval = datetime.timedelta(days=30)
+    interval = datetime.timedelta(days=MAX_FILE_AGE)
     if datetime.datetime.now() - modified_dt < interval:
         return data_file
     if modified == 0:
@@ -270,6 +280,8 @@ def get_data(country, state, service: str = ""):
     if country in STATES:
         params["state"] = state
 
+    logger.debug("Downloading...")
+
     r = requests.get(
         "https://www.repeaterbook.com/api/%s" % export,
         headers=headers,
@@ -280,7 +292,7 @@ def get_data(country, state, service: str = ""):
         if modified:
             logger.debug("Using cached data")
         logger.debug(f"Got error code {r.status_code} from server")
-        return
+        return None
     tmp = data_file + ".tmp"
     chunk_size = 8192
     probable_end = 3 << 20
@@ -291,12 +303,11 @@ def get_data(country, state, service: str = ""):
             f.write(chunk)
             data += chunk
             counter += len(chunk)
-            logger.debug("Downloading", counter / probable_end * 50)
     try:
         results = json.loads(data)
     except Exception as e:
         logger.exception(f"Invalid JSON in response: {e}")
-        return
+        return None
 
     if results["count"]:
         try:
@@ -308,12 +319,42 @@ def get_data(country, state, service: str = ""):
     else:
         os.remove(tmp)
         logger.debug("No results!")
-        return
+        return None
 
     logger.debug("Download complete")
+    random_sleep(min=SLEEPTIME_MIN, max=SLEEPTIME_MAX)
     return data_file
 
 
+def random_sleep(min: float, max: float):
+    if min >= max:
+        raise ValueError("invalid parameters; min >= max")
+    sleeptime = random.uniform(min, max)
+    logger.debug(sleeptime)
+    time.sleep(sleeptime)
+
+
+def download_repeaterbook_files():
+    files_list = []
+
+    # download the Files for North America
+    for key, values in STATES.items():
+        for value in values:
+            logger.info(msg=f"Downloading {key}-{value}")
+            file_name = get_data(country=key, state=value)
+            if file_name:
+                files_list.append(file_name)
+
+    # download the Rest-of-World files
+    for key in ROW_COUNTRIES:
+        logger.info(msg=f"Downloading {key}")
+        file_name = get_data(country=key)
+        if file_name:
+            files_list.append(file_name)
+
+    return files_list
+
+
 if __name__ == "__main__":
-    a = get_data("Russia","","")
-    logger.debug(a)
+    files_list=download_repeaterbook_files()
+    logger.info(files_list)
