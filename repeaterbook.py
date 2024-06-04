@@ -5,7 +5,7 @@ import datetime
 import json
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(module)s -%(levelname)s- %(message)s"
+    level=logging.DEBUG, format="%(asctime)s %(module)s -%(levelname)s- %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -199,7 +199,7 @@ ROW_COUNTRIES = [
     "Poland",
     "Portugal",
     "Romania",
-    "Russian Federation",
+    "Russia",
     "Saint Kitts and Nevis",
     "Saint Vincent and the Grenadines",
     "San Marino",
@@ -231,7 +231,7 @@ headers = {
 }
 
 
-def get_data(status, country, state, service: str = ""):
+def get_data(country, state, service: str = ""):
     # Ideally we would be able to pull the whole database, but right
     # now this is limited to 3500 results, so we need to filter and
     # cache by state to stay under that limit.
@@ -258,9 +258,9 @@ def get_data(status, country, state, service: str = ""):
     if datetime.datetime.now() - modified_dt < interval:
         return data_file
     if modified == 0:
-        logger.debug("RepeaterBook database %s not cached" % fn)
+        logger.debug(f"RepeaterBook database {fn} not cached")
     else:
-        logger.debug("RepeaterBook database %s too old: %s", fn, modified_dt)
+        logger.debug(f"RepeaterBook database {fn} too old.")
 
     params = {"country": country, "stype": service}
     if country in NA_COUNTRIES:
@@ -279,7 +279,7 @@ def get_data(status, country, state, service: str = ""):
     if r.status_code != 200:
         if modified:
             logger.debug("Using cached data")
-        logger.debug("Got error code %i from server" % r.status_code)
+        logger.debug(f"Got error code {r.status_code} from server")
         return
     tmp = data_file + ".tmp"
     chunk_size = 8192
@@ -295,7 +295,7 @@ def get_data(status, country, state, service: str = ""):
     try:
         results = json.loads(data)
     except Exception as e:
-        logger.exception("Invalid JSON in response: %s" % e)
+        logger.exception(f"Invalid JSON in response: {e}")
         return
 
     if results["count"]:
@@ -307,12 +307,13 @@ def get_data(status, country, state, service: str = ""):
             os.rename(tmp, data_file)
     else:
         os.remove(tmp)
-        status.send_fail("No results!")
+        logger.debug("No results!")
         return
 
-    status.send_status("Download complete", 50)
+    logger.debug("Download complete")
     return data_file
 
 
 if __name__ == "__main__":
-    pass
+    a = get_data("Russia","","")
+    logger.debug(a)
