@@ -1,6 +1,7 @@
 import requests
 import sqlite3
 import logging
+from iso3166 import countries
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(module)s -%(levelname)s- %(message)s"
@@ -18,13 +19,47 @@ class Database:
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS repeater (
-                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                latitude FLOAT NOT NULL,
-                longitude FLOAT NOT NULL,
-                name VARCHAR(256) NOT NULL,
-                country_a2 VARCHAR(2) NOT NULL,
-                state_a2 VARCHAR(2),
-                ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+                rptr_id INTEGER PRIMARY KEY NOT NULL,
+                state_id INTEGER,
+                frequency REAL,
+                input_freq REAL,
+                nearest_city TEXT,
+                landmark TEXT,
+                state TEXT,
+                country TEXT,
+                lat REAL,
+                lon REAL,
+                precise INT,
+                callsign TEXT,
+                use TEXT,
+                operational_status TEXT,
+                ares INT,
+                races INT,
+                skywarn INT,
+                canwarn INT,
+                allstar_node TEXT,
+                echolink_node TEXT,
+                irlp_node TEXT,
+                wires_node TEXT,
+                fm_analog INT,
+                dmr INT,
+                dmr_color_code TEXT,
+                dmr_id TEXT,
+                dstar int,
+                nxdn INT,
+                apco_p25 INT,
+                p25_nac TEXT,
+                m17 INT,
+                m17_can TEXT,
+                tetra INT,
+                tetra_mcc TEXT,
+                tetra_mnc TEXT,
+                system_fusion INT,
+                ysf_dg_id_uplink TEXT,
+                ysf_dg_id_downlink TEXT,
+                ysf_dsc TEXT,
+                notes TEXT,
+                last_update TEXT
             );
             """
         )
@@ -61,7 +96,7 @@ class Database:
         """
 
         # Abruf mit eigenen Koordinaten ausführen
-        cursor.execute(abruf, (eigene_laenge, eigene_breite))
+        cursor.execute(abruf, (latitude, longitude))
 
         # Ergebnis abrufen
         ergebnis = cursor.fetchone()
@@ -74,3 +109,7 @@ class Database:
     def close_db_connection(self):
         self.cursor.close()
         self.con.close()
+
+if __name__ == "__main__":
+    a = countries.get("United States")
+    pass
