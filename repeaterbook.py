@@ -241,7 +241,7 @@ ROW_COUNTRIES = [
 # COUNTRIES = list(sorted(NA_COUNTRIES + ROW_COUNTRIES))
 
 headers = {
-    "User-Agent": f"multi-purpose-aprs-daemon/0.51 (+https://github.com/joergschultzelutter/mpad/)"
+    "User-Agent": f"multi-purpose-aprs-daemon/0.61 (+https://github.com/joergschultzelutter/mpad/)"
 }
 
 
@@ -249,7 +249,13 @@ def get_data(country: str, state: str = "", service: str = ""):
     # Ideally we would be able to pull the whole database, but right
     # now this is limited to 3500 results, so we need to filter and
     # cache by state to stay under that limit.
-    fn = f"rb{service}-{country.lower().replace(' ', '_')}-{state.lower().replace(' ', '_')}.json"
+
+    # Build our file name
+    fn = f"rb{service}-{country.lower().replace(' ', '_')}"
+    if len(state) > 0:
+        fn = fn + f"-{state.lower().replace(' ', '_')}"
+    fn = fn + ".json"
+
     db_dir = "repeaterbook"
     try:
         os.mkdir(db_dir)
@@ -257,7 +263,7 @@ def get_data(country: str, state: str = "", service: str = ""):
         pass
     except Exception as e:
         logger.exception(f"Failed to create {db_dir}: {e}")
-        return
+        return False, None
     data_file = os.path.join(db_dir, fn)
     try:
         modified = os.path.getmtime(data_file)
@@ -266,7 +272,7 @@ def get_data(country: str, state: str = "", service: str = ""):
     modified_dt = datetime.datetime.fromtimestamp(modified)
     interval = datetime.timedelta(days=MAX_FILE_AGE)
     if datetime.datetime.now() - modified_dt < interval:
-        return data_file
+        return True, data_file
     if modified == 0:
         logger.debug(f"RepeaterBook database {fn} not cached")
     else:
@@ -303,11 +309,17 @@ def get_data(country: str, state: str = "", service: str = ""):
             f.write(chunk)
             data += chunk
             counter += len(chunk)
+
+    # Check if we may have hit the request limit
+    if "You have made too many queries" in data.decode("utf-8"):
+        os.remove(tmp)
+        return False, None
+
     try:
         results = json.loads(data)
     except Exception as e:
         logger.exception(f"Invalid JSON in response: {e}")
-        return None
+        return False, None
 
     if results["count"]:
         try:
@@ -319,11 +331,12 @@ def get_data(country: str, state: str = "", service: str = ""):
     else:
         os.remove(tmp)
         logger.debug("No results!")
-        return None
+        return False, None
 
     logger.debug("Download complete")
-    random_sleep(min=SLEEPTIME_MIN, max=SLEEPTIME_MAX)
-    return data_file
+    #random_sleep(min=SLEEPTIME_MIN, max=SLEEPTIME_MAX)
+    time.sleep(450)
+    return True, data_file
 
 
 def random_sleep(min: float, max: float):
@@ -341,16 +354,23 @@ def download_repeaterbook_files():
     for key, values in STATES.items():
         for value in values:
             logger.info(msg=f"Downloading {key}-{value}")
-            file_name = get_data(country=key, state=value)
+            success, file_name = get_data(country=key, state=value)
+            if not success:
+                logger.debug("Have hit request limit")
+                break
             if file_name:
                 files_list.append(file_name)
 
     # download the Rest-of-World files
-    for key in ROW_COUNTRIES:
-        logger.info(msg=f"Downloading {key}")
-        file_name = get_data(country=key)
-        if file_name:
-            files_list.append(file_name)
+    if success:
+        for key in ROW_COUNTRIES:
+            logger.info(msg=f"Downloading {key}")
+            success, file_name = get_data(country=key)
+            if not success:
+                logger.debug("Have hit request limit")
+                break
+            if file_name:
+                files_list.append(file_name)
 
     return files_list
 
