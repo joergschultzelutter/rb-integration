@@ -69,12 +69,6 @@ class Database:
         self, latitude: float, longitude: float, name: str, country: str, state: str
     ):
 
-
-#        cursor.executemany("""
-#        INSERT INTO daten (laenge, breite) VALUES (?, ?)
-#        """, [(laenge, breite) for laenge, breite in daten])
-        
-        
         self.cursor.execute(
             "INSERT INTO repeater(latitude, longitude, name, country_a2, state_a2) VALUES(?, ?, ?, ?, ?)",
             (latitude, longitude, name, country, state),
@@ -96,10 +90,10 @@ class Database:
         """
 
         # Abruf mit eigenen Koordinaten ausführen
-        cursor.execute(abruf, (latitude, longitude))
+        self.cursor.execute(abruf, (latitude, longitude))
 
         # Ergebnis abrufen
-        ergebnis = cursor.fetchone()
+        ergebnis = self.cursor.fetchone()
 
         # Nächster Eintrag
         naechster_laenge, naechster_breite, naechster_id = ergebnis
@@ -111,5 +105,5 @@ class Database:
         self.con.close()
 
 if __name__ == "__main__":
-    a = countries.get("United States")
-    pass
+    db = Database()
+    db.close_db_connection()

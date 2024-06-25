@@ -12,11 +12,11 @@ import time
 
 # Random min/max values for sleep times after a
 # file has been downloaded
-SLEEPTIME_MIN = 60
-SLEEPTIME_MAX = 90
+SLEEPTIME_MIN = 450
+SLEEPTIME_MAX = 600
 
 # maximum age of local files
-MAX_FILE_AGE = 30
+MAX_FILE_AGE = 99
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s %(module)s -%(levelname)s- %(message)s"
@@ -241,7 +241,8 @@ ROW_COUNTRIES = [
 # COUNTRIES = list(sorted(NA_COUNTRIES + ROW_COUNTRIES))
 
 headers = {
-    "User-Agent": f"multi-purpose-aprs-daemon/0.61 (+https://github.com/joergschultzelutter/mpad/)"
+#    "User-Agent": f"multi-purpose-aprs-daemon/0.61 (+https://github.com/joergschultzelutter/mpad/)"
+    "User-Agent": f"mpad-repeaterbook-integration (+https://github.com/joergschultzelutter/mpad-repeaterbook-integration/)"
 }
 
 
@@ -334,8 +335,7 @@ def get_data(country: str, state: str = "", service: str = ""):
         return False, None
 
     logger.debug("Download complete")
-    #random_sleep(min=SLEEPTIME_MIN, max=SLEEPTIME_MAX)
-    time.sleep(450)
+    random_sleep(min=SLEEPTIME_MIN, max=SLEEPTIME_MAX)
     return True, data_file
 
 
